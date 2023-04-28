@@ -1,0 +1,61 @@
+#outgoing {
+    width: 100%;
+    word-wrap: break-word;
+    white-space: normal;
+}
+
+body {
+    font-family: consolas;
+    background-color: #111;
+    color: #39FF14;
+    margin: 50px;
+    margin-top: 100px;
+}
+
+.container-sm {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    width: 500px;
+}
+
+input {
+    border-top-style: hidden;
+    border-right-style: hidden;
+    border-left-style: hidden;
+    border-bottom-style: groove;
+    background-color: #333;
+    padding: 10px;
+    color: white;
+    font-family: consolas;
+}
+
+input:focus {
+  outline: none;
+}
+
+.container-med {
+    width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    text-align: left;
+}
+
+.astext {
+    background:none;
+    border:none;
+    margin:5px;
+    padding:0;
+    cursor: pointer;
+    color: #39FF14;
+    font-family: consolas;
+    font-size: 20px;
+}
+
+button:hover {
+    translate: 5px;
+}
+

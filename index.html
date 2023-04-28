@@ -1,0 +1,21 @@
+<html>
+<head>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div class='container-med'>
+        <h1>Peer-to-Peer Chat</h1>
+        
+        <!-- for some reason first form isn't working so let's leave this here for now -->
+        <form action="/joinLobby"  method="POST" class="container-sm" hidden></form>
+        <form action="/createLobby"  method="POST" class="container-sm">
+            <button type="submit" class='astext'>Create Lobby</button>
+        </form>
+        <form action="/joinLobby"  method="POST" class="container-sm">
+            <input id="lobby-code" placeholder="lobby code"/>
+            <button type="submit" class='astext'>Join Lobby</button>
+        </form>
+        <pre id="outgoing"></pre>
+    </div>
+  </body>
+</html>
