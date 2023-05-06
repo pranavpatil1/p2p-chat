@@ -8,14 +8,28 @@
         
         <!-- for some reason first form isn't working so let's leave this here for now -->
         <form action="/joinLobby"  method="POST" class="container-sm" hidden></form>
-        <form action="/createLobby"  method="POST" class="container-sm">
-            <button type="submit" class='astext'>Create Lobby</button>
-        </form>
-        <form action="/joinLobby"  method="POST" class="container-sm">
-            <input id="lobby-code" placeholder="lobby code"/>
-            <button type="submit" class='astext'>Join Lobby</button>
+        <form action="/joinLobby"  method="POST" class="container-col">
+            <input id="username-input" name="username" placeholder="username"/>
+            <input  type="submit" class='astext' name='submit-type' value="Create Lobby"/>
+            <div class="container-row">
+                <input id="lobby-code" name="lobby-code" placeholder="lobby code"/>
+                <input  type="submit" class='astext' name='submit-type' value="Join Lobby"/>
+            </div>
         </form>
         <pre id="outgoing"></pre>
     </div>
+    
   </body>
+      <script>
+// Set a Cookie
+function setCookie(cName, cValue, expDays) {
+        let date = new Date();
+        date.setTime(date.getTime() + (expDays * 24 * 60 * 60 * 1000));
+        const expires = "expires=" + date.toUTCString();
+        document.cookie = cName + "=" + cValue + "; " + expires + "; path=/";
+}
+document.getElementById("username-input").onchange = () => {
+setCookie('username', document.getElementById("username-input").value, 30);
+}
+    </script>
 </html>

@@ -2,9 +2,15 @@ const express = require('express');
 const path = require('path');
 const socketIO = require('socket.io');
 const http = require('http');
+var bodyParser = require('body-parser')
 
 const app = express();
-const port = 5000;
+const port = 3000;
+
+app.use( bodyParser.json() );       // to support JSON-encoded bodies
+app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
+  extended: true
+})); 
 
 const server = http.Server(app);
 server.listen(port, () => {
@@ -51,7 +57,7 @@ app.get('/', (req, res) => {
     res.sendFile('index.html', {root: __dirname});
 });
 
-app.post('/createLobby', (req, res) => {
+function createLobby(req, res) {
     const lobbyId = makeid(10);
     console.log("request to /createLobby");
     
@@ -60,12 +66,29 @@ app.post('/createLobby', (req, res) => {
     res.redirect('/lobby/'+lobbyId+"#host");
     
     console.log(lobbyId + " created");
-    console.log(lobbies[lobbyId]);
-});
+}
+
+function joinLobby(req, res) {
+    console.log("request to /joinLobby");
+    
+    console.log(req.body)
+    
+    const lobbyId = req.body["lobby-code"]
+    
+    // invalid lobby code
+    if (lobbyId.length !== 10) {
+        res.redirect('/');
+    }
+    
+    res.redirect('/lobby/' + lobbyId);
+}
 
 app.post('/joinLobby', (req, res) => {
-    console.log("request to /joinLobby");
-    res.redirect('/lobby/UNIMPLEMENTED');
+    if (req.body['submit-type'] == "Create Lobby") {
+        createLobby(req, res);
+    } else {
+        joinLobby(req, res);
+    }
 });
 
 /** 
@@ -102,9 +125,12 @@ io.on('connect', function (socket) {
   console.log("connection!");
   
   socket.on('request-p2p-offer', function (message) {
-    console.log(message);
+    var response = null;
+    if (message.lobbyId in lobbies) {
+        response = lobbies[message.lobbyId].getConnections()[0].offer;
+    }
     socket.emit('send-p2p-offer', {
-        offer: lobbies[message.lobbyId].getConnections()[0].offer
+        offer: response
     });
   });
   
@@ -113,6 +139,7 @@ io.on('connect', function (socket) {
     console.log(message);
     
     var conn = new P2PConnection();
+    
     conn.initiatorSocket = socket;
     conn.offer = message.offer;
     
@@ -133,12 +160,16 @@ io.on('connect', function (socket) {
   });
   
   
-  socket.on('request-p2p-offer', function (message) {
+  socket.on('request-p2p-answer', function (message) {
     console.log(message);
     
-    var conn = lobbies[message.lobbyId].getConnections()[0];
-    socket.emit('send-p2p-offer', {
-        answer: conn.offer
+    var response = null;
+    if (message.lobbyId in lobbies) {
+        const conn = lobbies[message.lobbyId].getConnections()[0];
+        response = conn.offer;
+    }
+    socket.emit('send-p2p-answer', {
+        answer: response
     });
   });
 });
@@ -166,6 +197,8 @@ function makeid(length) {
     return result;
 }
 
+// handle form data
+app.use(express.urlencoded());
 
 // serve static files
 app.use(express.static(path.join(__dirname, 'public')));
