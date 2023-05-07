@@ -24,27 +24,37 @@ var lobbies = {};
 class Lobby {
 
   constructor(name) {
-    this.connections = []
+    // maps a username to a socket connection
+    this.users = {};
   }
   
-  addConnection(conn) {
-    this.connections.push(conn);
+  getSocket(username) {
+      if (username in this.users) {
+          return this.users[username];
+      } else {
+          return null;
+      }
   }
   
-  getConnections() {
-    return this.connections;
+  addUser(username, socket) {
+      console.log("adding user " + username);
+      if (!(username in this.users)) {
+          this.users[username] = socket;
+          return true;
+      }
+      return false;
   }
-}
-
-class P2PConnection {
-
-  constructor(name) {
-    this.initiatorSocket = null;
-    this.otherSocket = null;
-    this.offer = null;
-    this.answer = null;
+  
+  removeUser(username) {
+      if (username in this.users) {
+          delete this.users[username];
+      }
+      // NEED TO ALSO CLEAN UP CONNECTIONS
   }
-
+  
+  getUsers() {
+      return Object.keys(this.users);
+  }
 }
 
 /**
@@ -124,54 +134,51 @@ CODE FOR EVENT STREAM
 io.on('connect', function (socket) {
   console.log("connection!");
   
-  socket.on('request-p2p-offer', function (message) {
-    var response = null;
-    if (message.lobbyId in lobbies) {
-        response = lobbies[message.lobbyId].getConnections()[0].offer;
-    }
-    socket.emit('send-p2p-offer', {
-        offer: response
-    });
+  // when a client just joins a lobby they ask for this
+  socket.on('join-lobby', message => {
+      console.log("socket req sent to join-lobby");
+      console.log(message);
+      var output = [];
+      if (message.lobbyId in lobbies) {
+          output = lobbies[message.lobbyId].getUsers();
+          const success = lobbies[message.lobbyId].addUser(message.user, socket);
+          if (!success) {
+              socket.emit('reply-lobby-users', null);
+              return;
+          }
+      }
+      socket.emit('reply-lobby-users', output);
   });
-  
   
   socket.on('set-p2p-offer', function (message) {
     console.log(message);
     
-    var conn = new P2PConnection();
-    
-    conn.initiatorSocket = socket;
-    conn.offer = message.offer;
-    
-    lobbies[message.lobbyId].addConnection(conn);
+    // send a message to whoever it's to about this request to create a conn
+    const receiverSocket = lobbies[message.lobbyId].getSocket(message.to);
+    receiverSocket.emit('send-p2p-offer', {
+        offer: message.offer,
+        to: message.to,
+        from: message.from
+    });
   });
-  
   
   socket.on('set-p2p-answer', function (message) {
     console.log(message);
     
-    var conn = lobbies[message.lobbyId].getConnections()[0];
-    conn.otherSocket = socket;
-    conn.answer = message.answer;
-    
-    conn.initiatorSocket.emit('send-p2p-answer', {
-        answer: message.answer
+    const receiverSocket = lobbies[message.lobbyId].getSocket(message.from);    
+    receiverSocket.emit('send-p2p-answer', {
+        answer: message.answer,
+        to: message.to,
+        from: message.from
     });
   });
   
+  /*
+  socket.on('disconnect', message => {
+      console.log("client disconnected");
+      for (const lobbyId in lobbies)
+  });*/
   
-  socket.on('request-p2p-answer', function (message) {
-    console.log(message);
-    
-    var response = null;
-    if (message.lobbyId in lobbies) {
-        const conn = lobbies[message.lobbyId].getConnections()[0];
-        response = conn.offer;
-    }
-    socket.emit('send-p2p-answer', {
-        answer: response
-    });
-  });
 });
 
 /**
