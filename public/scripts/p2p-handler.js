@@ -1,30 +1,28 @@
 console.log("start");
 
+const MULTIPLAYER = true;
+
 /***
 
 GAME OBJECTS
 
 */
 
-class Sprite {
+class Ball {
 
-  constructor(startX, startY, controllable) {
+  constructor(startX, startY, controllable, size) {
     // maps a username to a socket connection
     this.x = startX;
     this.y = startY;
     this.controllable = controllable;
+    this.size = size;
   }
-  
-  display() {
-        fill(120, 120, 120);
-        ellipse(this.x, this.y, 50, 50);
-    }
   
 }
 
-class Player extends Sprite {
+class Player extends Ball {
     constructor (name, startX, startY, controllable) {
-        super(startX, startY, controllable);
+        super(startX, startY, controllable, 50);
         this.username = name;
         this.kicking = false;
         
@@ -39,19 +37,6 @@ class Player extends Sprite {
         }
         
         this.speed = 4;
-    }
-    
-    display() {
-        fill(0, 0, 0);
-        
-        if (this.kicking) {
-            strokeWeight(5);
-            stroke(0);
-        } else {
-            noStroke();
-        }
-        
-        ellipse(this.x, this.y, 50, 50);
     }
     
     update() {
@@ -95,6 +80,8 @@ const username = getCookie("username");
 
 addChatMessage("username: " + username);
 
+
+
 // const initiator = location.hash === '#host';
 
 // go from /lobby/123124#something to 123124
@@ -110,13 +97,42 @@ addChatMessage("Joining lobby " + lobbyId);
 var peers = {};
 var players = {};
 const me = new Player(username, 200, 200, true);
-const ball = new Sprite(300, 200, false);
+const ball = new Ball(300, 200, false, 50);
 
 players[username] = me;
+
+if (MULTIPLAYER) {
 
 // goes from http://localhost:3000/other/stuff to http://localhost:3000
 var socket = io(window.location.href.split("/").splice(0, 3).join("/"));
 
+const simplePeerOptions = {
+  iceServers: [
+      {
+        urls: "stun:a.relay.metered.ca:80",
+      },
+      {
+        urls: "turn:a.relay.metered.ca:80",
+        username: "99e114727c10a9a346f607ee",
+        credential: "WqgaDlQOQ5yiz2iq",
+      },
+      {
+        urls: "turn:a.relay.metered.ca:80?transport=tcp",
+        username: "99e114727c10a9a346f607ee",
+        credential: "WqgaDlQOQ5yiz2iq",
+      },
+      {
+        urls: "turn:a.relay.metered.ca:443",
+        username: "99e114727c10a9a346f607ee",
+        credential: "WqgaDlQOQ5yiz2iq",
+      },
+      {
+        urls: "turn:a.relay.metered.ca:443?transport=tcp",
+        username: "99e114727c10a9a346f607ee",
+        credential: "WqgaDlQOQ5yiz2iq",
+      },
+  ],
+};
 
 function setupPeer(p, initiator, to, from) {
     p.on('error', err => console.log('error', err))
@@ -150,7 +166,10 @@ function setupPeer(p, initiator, to, from) {
     p.on('connect', () => {
         console.log('CONNECT');
         document.getElementById("chatWindow").removeAttribute("hidden");
-        p.send('Connected at ' + (new Date()).toString() + ' between ' + to + " and " + from);
+        broadcast({
+            type: "chat",
+            message: 'Connected at ' + (new Date()).toString() + ' between ' + to + " and " + from
+        })
     })
 
     p.on('data', data => {
@@ -186,7 +205,9 @@ socket.on('reply-lobby-users', message => {
         const p = new SimplePeer({
             initiator: true,
             trickle: false,
-            objectMode:true
+            objectMode:true,
+            config:simplePeerOptions,
+            iceTransportPolicy: 'relay'
         });
         setupPeer(p, true, otherUser, username);
         peers[otherUser] = p;
@@ -210,7 +231,9 @@ socket.on('send-p2p-offer', function (message) {
         const p = new SimplePeer({
             initiator: false,
             trickle: false,
-            objectMode:true
+            objectMode:true,
+            config:simplePeerOptions,
+            iceTransportPolicy: 'relay'
         });
         console.log(message.offer); /*** UNDEFINE!!! */
         setupPeer(p, false, message.to, message.from);
@@ -222,7 +245,6 @@ socket.on('send-p2p-offer', function (message) {
 
 socket.on('send-p2p-answer', function (message) {
     if (message.answer === null) {
-        window.location.href="/";
         console.log("invalid lobby");
     } else {
         if (message.from !== username) {
@@ -243,6 +265,8 @@ function broadcast(data) {
             console.log("error on send");
         }
     }
+}
+
 }
 
 document.getElementById('chatForm').addEventListener('submit', ev => {
@@ -280,8 +304,6 @@ var programCode = function(processingInstance) {
         size(800, 400); 
         frameRate(60);
 
-        var x = 200;
-        
         keyPressed = () => {
             if (keyCode == UP) {
                 me.up = true;
@@ -331,11 +353,13 @@ var programCode = function(processingInstance) {
             noStroke();
             ellipse(ball.x, ball.y, 50, 50);
             
-            broadcast({
-                type: "gameData",
-                username: username,
-                gameObject: JSON.stringify(me)
-            })
+            if (MULTIPLAYER) {
+                broadcast({
+                    type: "gameData",
+                    username: username,
+                    gameObject: JSON.stringify(me)
+                })
+            }
         }
     }
 };
