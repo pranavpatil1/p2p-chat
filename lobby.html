@@ -1,24 +1,43 @@
 <html>
   <body>
     <style>
-      #outgoing {
-        width: 600px;
-        word-wrap: break-word;
-        white-space: normal;
+        @font-face {
+            font-family: "Open Sans";
+            src: url(/OpenSans.ttf) format("truetype");
+        }
+
+        #outgoing {
+            word-wrap: break-word;
+            white-space: normal;
+        }
+        html,
+        body {
+            display:flex;
+            flex-direction: row;
+            margin:0;
+            padding:0;
+        }
+        #chatSection {
+            padding: 20px;
+            font-family: "Open Sans", sans-serif;
       }
     </style>
     
     <canvas id="mycanvas"></canvas> 
     
-    <h2>Chat section</h2>
+    <div id="chatSection">
     
-    <div id="chatMessages">
-    </div>
-    <div id="chatWindow" hidden>
-    <form id="chatForm">
-        <textarea id="messageBox"></textarea>
-        <button id="sendMessage" type="submit">send</button>
-    </form>
+        <h2>Chat section</h2>
+    
+        <div id="chatMessages"></div>
+        
+        <div id="chatWindow" hidden>
+            <form id="chatForm">
+                <textarea id="messageBox"></textarea>
+                <button id="sendMessage" type="submit">send</button>
+            </form>
+        </div>
+    
     </div>
     
     <pre id="outgoing"></pre>

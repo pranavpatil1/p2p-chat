@@ -1,6 +1,6 @@
 console.log("start");
 
-const MULTIPLAYER = true;
+const MULTIPLAYER = false;
 
 /***
 
@@ -16,6 +16,20 @@ class Ball {
     this.y = startY;
     this.controllable = controllable;
     this.size = size;
+    
+    this.vel = {
+        x: 0,
+        y: 0
+    }
+  }
+  
+  update() {
+        this.x += this.vel.x / 30;
+        this.y += this.vel.y / 30;
+  }
+  
+  getDistance (other) {
+      return Math.sqrt((other.x - this.x) ** 2 + (other.y - this.y) ** 2);
   }
   
 }
@@ -31,11 +45,6 @@ class Player extends Ball {
         this.left = false;
         this.right = false;
         
-        this.vel = {
-            x: 0,
-            y: 0
-        }
-        
         this.speed = 4;
     }
     
@@ -47,8 +56,13 @@ class Player extends Ball {
         this.vel.y *= 0.975;
         this.vel.x *= 0.975;
         
-        this.x += this.vel.x / 30;
-        this.y += this.vel.y / 30;
+        // slow down player when they're kicking
+        if (this.kicking) {
+            this.vel.y *= 0.975;
+            this.vel.x *= 0.975;
+        }
+        
+        super.update();
     }
     
     setParams(gameObject) {
@@ -96,8 +110,12 @@ addChatMessage("Joining lobby " + lobbyId);
 
 var peers = {};
 var players = {};
+var sprites = [];
 const me = new Player(username, 200, 200, true);
 const ball = new Ball(300, 200, false, 50);
+
+sprites.push(me);
+sprites.push(ball);
 
 players[username] = me;
 
@@ -177,7 +195,9 @@ function setupPeer(p, initiator, to, from) {
         if (data.type == "gameData") {
             var gameObject = JSON.parse(data.gameObject);
             if (!(data.username in Object.keys(players))) {
-                players[data.username] = new Player(data.username, 0, 0, false);
+                var newPlayer = new Player(data.username, 0, 0, false);
+                players[data.username] = newPlayer;
+                sprites.push(newPlayer);
             }
             players[data.username].setParams(gameObject);
         } else {
@@ -301,7 +321,7 @@ GAME CODE
 
 var programCode = function(processingInstance) {
     with (processingInstance) {
-        size(800, 400); 
+        size(document.body.clientWidth * 3/4, window.innerHeight); 
         frameRate(60);
 
         keyPressed = () => {
@@ -316,6 +336,9 @@ var programCode = function(processingInstance) {
             }
             if (keyCode == RIGHT) {
                 me.right = true;
+            }
+            if (keyCode == 32) {
+                me.kicking = true;
             }
         }
         
@@ -332,27 +355,128 @@ var programCode = function(processingInstance) {
             if (keyCode == RIGHT) {
                 me.right = false;
             }
-        }            
-
-        draw = () => {
-            background(154, 173, 85);
+            if (keyCode == 32) {
+                me.kicking = false;
+            }
+        }
+        
+        const fieldSize = {
+            width: 1500,
+            height: 900
+        };
+        
+        drawScene = () => {
+            // background of everything
+            background(69, 150, 5);
             
-            me.update();
-
+            pushMatrix();
+            
+            // move camera to center player
+            translate(-me.x + width/2, -me.y + height/2);
+            
+            noStroke();
+            fill(63, 138, 2);
+            for (var i = 0; i < fieldSize.width; i += 200) {
+                rect(i, 0, 100, fieldSize.height);
+            }
+            
+            // have a rectangle around where the field is
+            strokeWeight(5);
+            stroke(165, 234, 109);
+            noFill();
+            rect(0, 0, fieldSize.width, fieldSize.height);
+            
             for (const sprite of Object.values(players)) {
                 fill(50, 50, 50);
-                stroke(2);
+                strokeWeight(5);
                 stroke(0, 0, 0);
+                if (sprite.kicking) {
+                    strokeWeight(7);
+                }
                 if (sprite.username == me.username) {
                     fill(200, 200, 200);
                 }
-                ellipse(sprite.x, sprite.y, 50, 50);
+                ellipse(sprite.x, sprite.y, sprite.size, sprite.size);
             }
             
             fill(40, 200, 200);
-            noStroke();
-            ellipse(ball.x, ball.y, 50, 50);
+            strokeWeight(5);
+            stroke(0, 0, 0);
+            ellipse(ball.x, ball.y, ball.size, ball.size);
             
+            popMatrix();
+        };
+        
+        applyCollisions = () => {
+            
+            /**   BOUNDARY COLLISIONS  */
+            
+            var boundaries = {
+                left: -50,
+                right: fieldSize.width + 50,
+                top: -50,
+                bottom: fieldSize.height + 50
+            };
+            
+            if (me.x - me.size / 2 < boundaries.left) {
+                me.x = boundaries.left + me.size / 2;
+                if (me.vel.x < 0) {
+                    me.vel.x *= -0.8;
+                }
+            } else if (me.x + me.size / 2 > boundaries.right) {
+                me.x = boundaries.right - me.size / 2;
+                if (me.vel.x > 0) {
+                    me.vel.x *= -0.8;
+                }
+            }
+            
+            if (me.y - me.size / 2 < boundaries.top) {
+                me.y = me.size / 2 + boundaries.top;
+                if (me.vel.y < 0) {
+                    me.vel.y *= -0.8;
+                }
+            } else if (me.y + me.size / 2 > boundaries.bottom) {
+                me.y = boundaries.bottom - me.size / 2;
+                if (me.vel.y > 0) {
+                    me.vel.y *= -0.8;
+                }
+            }
+            
+            /**   BALL TO BALL COLLISIONS  */
+            const dampening = 1;
+            for (const other of sprites) {
+                // handle collisions with sprites that aren't me
+                if (other !== me) {
+                    if (me.getDistance(other) < (me.size + other.size) / 2) {
+                        console.log('COLLISION OCCURRED');
+                        
+                        /*
+                        me.vel.x *= -dampening;
+                        me.vel.y *= -dampening;
+                        other.vel.x *= -dampening;
+                        other.vel.y *= -dampening;
+                        */
+                        
+                        var transferX = me.vel.x - other.vel.x;
+                        var transferY = me.vel.y - other.vel.y;
+                        
+                        me.vel.x -= transferX;
+                        me.vel.y -= transferY;
+                        
+                        other.vel.x += transferX;
+                        other.vel.y += transferY;
+                    }
+                }
+            }
+        };
+        
+        draw = () => {
+            drawScene();
+            for (const s of sprites) {
+                s.update();
+            }
+            applyCollisions();
+
             if (MULTIPLAYER) {
                 broadcast({
                     type: "gameData",
