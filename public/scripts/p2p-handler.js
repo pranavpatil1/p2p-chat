@@ -31,6 +31,12 @@ class Ball {
   getDistance (other) {
       return Math.sqrt((other.x - this.x) ** 2 + (other.y - this.y) ** 2);
   }
+    
+    setParams(gameObject) {
+        for (const key of Object.keys(gameObject)) {
+            this[key] = gameObject[key];
+        }
+    }
   
 }
 
@@ -64,12 +70,6 @@ class Player extends Ball {
         
         super.update();
     }
-    
-    setParams(gameObject) {
-        for (const key of Object.keys(gameObject)) {
-            this[key] = gameObject[key];
-        }
-    }
 }
 
 /**
@@ -92,12 +92,6 @@ function getCookie(cName) {
 
 const username = getCookie("username");
 
-addChatMessage("username: " + username);
-
-
-
-// const initiator = location.hash === '#host';
-
 // go from /lobby/123124#something to 123124
 var url = window.location.href;
 var lobbyId = url.substring(url.lastIndexOf('/') + 1);
@@ -106,12 +100,20 @@ if (hashLoc !== -1) {
     lobbyId = lobbyId.substring(0, lobbyId.lastIndexOf('#'));
 }
 
-addChatMessage("Joining lobby " + lobbyId);
+
+addChatMessage("Username: " + username);
+
+addChatMessage("Lobby: " + lobbyId);
+
+const fieldSize = {
+    width: 1500,
+    height: 900
+};
 
 var peers = {};
 var players = {};
 var sprites = [];
-const me = new Player(username, 200, 200, true);
+const me = new Player(username, Math.floor(Math.random() * fieldSize.width), Math.floor(Math.random() * fieldSize.width), true);
 const ball = new Ball(300, 200, false, 50);
 
 sprites.push(me);
@@ -200,6 +202,9 @@ function setupPeer(p, initiator, to, from) {
                 sprites.push(newPlayer);
             }
             players[data.username].setParams(gameObject);
+        } else if (data.type == "ballData") {
+            var gameObject = JSON.parse(data.gameObject);
+            ball.setParams(gameObject);
         } else {
             addChatMessage(data.message);
         }
@@ -360,11 +365,6 @@ var programCode = function(processingInstance) {
             }
         }
         
-        const fieldSize = {
-            width: 1500,
-            height: 900
-        };
-        
         drawScene = () => {
             // background of everything
             background(69, 150, 5);
@@ -446,7 +446,7 @@ var programCode = function(processingInstance) {
             const dampening = 1;
             for (const other of sprites) {
                 // handle collisions with sprites that aren't me
-                if (other !== me) {
+                if (other === ball) {
                     if (me.getDistance(other) < (me.size + other.size) / 2) {
                         console.log('COLLISION OCCURRED');
                         
@@ -465,6 +465,12 @@ var programCode = function(processingInstance) {
                         
                         other.vel.x += transferX;
                         other.vel.y += transferY;
+                        
+                        broadcast({
+                            type: "ballData",
+                            username: username,
+                            gameObject: JSON.stringify(other)
+                        })
                     }
                 }
             }
@@ -489,6 +495,14 @@ var programCode = function(processingInstance) {
 };
 
   // Get the canvas that ProcessingJS will use
-  var canvas = document.getElementById("mycanvas"); 
+  var canvas = document.getElementById("mycanvas");
+  canvas.focus()
+  canvas.onblur = () => {
+      console.log("LOST FOCUS");
+      me.up = false;
+      me.down = false;
+      me.left = false;
+      me.right = false;
+  };
   // Pass the function to ProcessingJS constructor
   var processingInstance = new Processing(canvas, programCode); 
