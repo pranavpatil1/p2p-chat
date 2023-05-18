@@ -1,6 +1,6 @@
 console.log("start");
 
-const MULTIPLAYER = false;
+const MULTIPLAYER = true;
 
 /***
 
