@@ -387,7 +387,7 @@ var programCode = function(processingInstance) {
             rect(0, 0, fieldSize.width, fieldSize.height);
             
             for (const sprite of Object.values(players)) {
-                fill(50, 50, 50);
+                fill(150, 150, 150);
                 strokeWeight(5);
                 stroke(0, 0, 0);
                 if (sprite.kicking) {
@@ -407,6 +407,32 @@ var programCode = function(processingInstance) {
             popMatrix();
         };
         
+        wallCollision = (sprite, boundaries) => {
+            if (sprite.x - sprite.size / 2 < boundaries.left) {
+                sprite.x = boundaries.left + sprite.size / 2;
+                if (sprite.vel.x < 0) {
+                    sprite.vel.x *= -0.8;
+                }
+            } else if (sprite.x + sprite.size / 2 > boundaries.right) {
+                sprite.x = boundaries.right - sprite.size / 2;
+                if (sprite.vel.x > 0) {
+                    sprite.vel.x *= -0.8;
+                }
+            }
+            
+            if (sprite.y - sprite.size / 2 < boundaries.top) {
+                sprite.y = sprite.size / 2 + boundaries.top;
+                if (sprite.vel.y < 0) {
+                    sprite.vel.y *= -0.8;
+                }
+            } else if (sprite.y + sprite.size / 2 > boundaries.bottom) {
+                sprite.y = boundaries.bottom - sprite.size / 2;
+                if (sprite.vel.y > 0) {
+                    sprite.vel.y *= -0.8;
+                }
+            }
+        };
+        
         applyCollisions = () => {
             
             /**   BOUNDARY COLLISIONS  */
@@ -418,29 +444,15 @@ var programCode = function(processingInstance) {
                 bottom: fieldSize.height + 50
             };
             
-            if (me.x - me.size / 2 < boundaries.left) {
-                me.x = boundaries.left + me.size / 2;
-                if (me.vel.x < 0) {
-                    me.vel.x *= -0.8;
-                }
-            } else if (me.x + me.size / 2 > boundaries.right) {
-                me.x = boundaries.right - me.size / 2;
-                if (me.vel.x > 0) {
-                    me.vel.x *= -0.8;
-                }
-            }
+            var boundariesBall = {
+                left: 0,
+                right: fieldSize.width,
+                top: 0,
+                bottom: fieldSize.height
+            };
             
-            if (me.y - me.size / 2 < boundaries.top) {
-                me.y = me.size / 2 + boundaries.top;
-                if (me.vel.y < 0) {
-                    me.vel.y *= -0.8;
-                }
-            } else if (me.y + me.size / 2 > boundaries.bottom) {
-                me.y = boundaries.bottom - me.size / 2;
-                if (me.vel.y > 0) {
-                    me.vel.y *= -0.8;
-                }
-            }
+            wallCollision(me, boundaries);
+            wallCollision(ball, boundariesBall);
             
             /**   BALL TO BALL COLLISIONS  */
             const dampening = 1;
